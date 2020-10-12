@@ -40,7 +40,7 @@ double CSDapprx_scaling(long* TYPE, long k, long* newseq, long nbranch, long nty
 
 int Build(long* TYPE, long* type2node, long* ntype, const double RHO, const double THETA, double* logw, tsk_table_collection_t* tables, long* num_nodes, long* num_rec, long* num_mut, long* num_coal, long* num_nonrec, long* mut_by_site, long* mut_site, long* mut_state, long* mut_node) {
     long *nanc, nbranch = M, *newseq; /*nanc: number of individuals ancestral at each locus */
-    long *nanc_copy, *TYPE_tmp, ntype_copy, nlineage_copy, nbranch_copy; 
+    long *nanc_copy, ntype_copy, nlineage_copy, nbranch_copy; /* *TYPE_tmp*/
     long i, j, t, l, count, min, max, s1, s2;
     short int flag = 0; /*flag == 0, continue SIS; flag != 0, the stopping criteria is reached*/
     short int flag_MRCA = 0; /*flag_MRA == 0, the grand MRCA not found, continue loops*/
@@ -56,11 +56,7 @@ int Build(long* TYPE, long* type2node, long* ntype, const double RHO, const doub
     nanc = long_vec_init(L);
     nanc_copy = long_vec_init(L);
     newseq = long_vec_init(L);
-	TYPE_tmp = long_vec_init((L + 1) * TYPE_MAX);
-	TYPE_flat = long_vec_init((L + 1) * NumLineage);
-	shuffle_seq = long_vec_init((L + 1) * NumLineage);
-	shuffle_index = long_vec_init(NumLineage);
-	logPAC_1 = dou_vec_init(nshuffle);
+	//TYPE_tmp = long_vec_init((L + 1) * TYPE_MAX);
 
 
     for(i=0; i<L; i++) {
@@ -175,7 +171,7 @@ int Build(long* TYPE, long* type2node, long* ntype, const double RHO, const doub
     }
 	*num_nodes = nbranch;
 	fprintf(stderr, "num of nodes = %ld, recombinations = %ld; mutations = %ld; non-recurrent = %ld; coalescence = %ld\n", nbranch, *num_rec, *num_mut, *num_nonrec, *num_coal);
-	//fprintf(stderr, "Before calculate H_tau, the log(weight) = %lf\n", *logw);
+	fprintf(stderr, "Before calculate H_tau, the log(weight) = %lf\n", *logw);
 
     /*calculate p(N_tau) and p(H_tau | N_tau); N_tau = nbranch*/
 	//apprx = Normal_pdf(empirical, nbranch);
@@ -183,72 +179,93 @@ int Build(long* TYPE, long* type2node, long* ntype, const double RHO, const doub
 
 	/*The product of approximate conditionals (PAC) depends on the order of the conditionals.
 	Shuffle the order of sequences and take the average of PACs*/
-	for (i = 0; i < NumLineage; i++) shuffle_index[i] = i;
-	count = 0;
-	for (i = 0; i < *ntype; i++) {
-		for (j = 0; j < *(TYPE + (L + 1) * i + L); j++) {
-			for (l = 0; l < L; l++) {
-				*(TYPE_flat + (L + 1) * count + l) = *(TYPE + (L + 1) * i + l);
-			}	
-			*(TYPE_flat + (L + 1) * count + L) = 1;
-			count += 1;
-		}		
-	}
-	if (count != NumLineage) fprintf(stderr, "\nError shuffling sequences! count=%ld, nbranch=%ld\n", count, nbranch);
+	if (NumLineage > 1) {
+		TYPE_flat = long_vec_init((L + 1) * NumLineage);
+		shuffle_seq = long_vec_init((L + 1) * NumLineage);
+		shuffle_index = long_vec_init(NumLineage);
+		logPAC_1 = dou_vec_init(nshuffle);
 
-	logPAC = 0.0; /*log(PAC) for the first order*/
-	
-	for (i = 0; i < nshuffle; i++) {
-		nbranch_copy = nbranch;
-		nlineage_copy = NumLineage;
-		PAC_temp = 0.0;
-
-		/*shuffle the sequences*/
-		shuffle(shuffle_index, NumLineage);
-		for (j = 0; j < NumLineage; j++) {
-			for (l = 0; l < L; l++) {
-				shuffle_seq[(L+1)*j+l] = *(TYPE_flat + (L+1)*shuffle_index[j]+l);
-			}	
-			shuffle_seq[(L + 1) * j + L] = 1;
-		}
-
-		/*calculate PAC for the shuffled sequences*/
-		for (j = NumLineage - 1; j > 0; j--) {
-			for (l = 0; l < L; l++) *(nanc_copy + l) = *(nanc + l);
-			for (l = 0; l < L; l++) newseq[l] = *(shuffle_seq + (L + 1) * j + l);
-			apprx = CSDapprx_scaling(shuffle_seq, j, newseq, nbranch_copy, nlineage_copy, nanc_copy, RHO);
-			PAC_temp += apprx;
-			nbranch_copy--;
-			nlineage_copy--;			
-			for (l = 0; l < L; l++) {
-				if (*(shuffle_seq + (L + 1) * j) + l >= 0) nanc_copy[l] -= 1;
-				if (nanc_copy[l] < 0) fprintf(stderr, "\nError updating nanc_copy!\n");
+		for (i = 0; i < NumLineage; i++) shuffle_index[i] = i;
+		count = 0;
+		for (i = 0; i < *ntype; i++) {
+			for (j = 0; j < *(TYPE + (L + 1) * i + L); j++) {
+				for (l = 0; l < L; l++) {
+					*(TYPE_flat + (L + 1) * count + l) = *(TYPE + (L + 1) * i + l);
+				}
+				*(TYPE_flat + (L + 1) * count + L) = 1;
+				count += 1;
 			}
 		}
-		if (nlineage_copy != 1) fprintf(stderr, "\nError! Calculating PAC is wrong.\n");
+		if (count != NumLineage) fprintf(stderr, "\nError shuffling sequences! count=%ld, nbranch=%ld\n", count, nbranch);
+
+		logPAC = 0.0; /*log(PAC) for the first order*/
+
+		for (i = 0; i < nshuffle; i++) {
+			nbranch_copy = nbranch;
+			nlineage_copy = NumLineage;
+			PAC_temp = 0.0;
+
+			/*shuffle the sequences*/
+			shuffle(shuffle_index, NumLineage);
+			for (j = 0; j < NumLineage; j++) {
+				for (l = 0; l < L; l++) {
+					shuffle_seq[(L + 1) * j + l] = *(TYPE_flat + (L + 1) * shuffle_index[j] + l);
+				}
+				shuffle_seq[(L + 1) * j + L] = 1;
+			}
+
+			/*calculate PAC for the shuffled sequences*/
+			for (j = NumLineage - 1; j > 0; j--) {
+				for (l = 0; l < L; l++) *(nanc_copy + l) = *(nanc + l);
+				for (l = 0; l < L; l++) newseq[l] = *(shuffle_seq + (L + 1) * j + l);
+				apprx = CSDapprx_scaling(shuffle_seq, j, newseq, nbranch_copy, nlineage_copy, nanc_copy, RHO);
+				PAC_temp += apprx;
+				nbranch_copy--;
+				nlineage_copy--;
+				for (l = 0; l < L; l++) {
+					if (*(shuffle_seq + (L + 1) * j) + l >= 0) nanc_copy[l] -= 1;
+					if (nanc_copy[l] < 0) fprintf(stderr, "\nError updating nanc_copy!\n");
+				}
+			}
+			if (nlineage_copy != 1) fprintf(stderr, "\nError! Calculating PAC is wrong.\n");
+			s1 = 0;
+			s2 = 0;
+			for (j = 0; j < L; j++) {
+				if (*(shuffle_seq + (L + 1) * 0 + j) == 0) s1 += 1;
+				if (*(shuffle_seq + (L + 1) * 0 + j) == 1) s2 += 1;
+			}
+			PAC_temp += (s1 * log(Mu) + s2 * log(1 - Mu));
+
+			if (i == 0) {
+				logPAC = PAC_temp;
+				logPAC_1[i] = 0.0;
+			}
+			else {
+				logPAC_1[i] = PAC_temp - logPAC;
+				if ((logPAC_1[i] < -312) || (logPAC_1[i] > 313)) fprintf(stderr, "\nWarning! Difference between PACs is too large, %lf.\n", logPAC_1[i]);
+			}
+		}
+		logPAC_avg = 0.0;
+		for (i = 0; i < nshuffle; i++) logPAC_avg += exp(logPAC_1[i]);
+		//fprintf(stderr, "\nThe averaged part = %lf, the log(PAC) for the first order = %lf\n", logPAC_avg/(double)nshuffle, logPAC);
+		logPAC_avg = log(logPAC_avg / (double)nshuffle) + logPAC;
+		//fprintf(stderr, "\nThe log(averaged PAC) = %lf\n", logPAC_avg);
+		*logw += logPAC_avg;
+
+		free(TYPE_flat);
+		free(shuffle_index);
+		free(shuffle_seq);
+		free(logPAC_1);
+	}
+	else {
 		s1 = 0;
 		s2 = 0;
 		for (j = 0; j < L; j++) {
-			if (*(shuffle_seq + (L + 1) * 0 + j) == 0) s1 += 1;
-			if (*(shuffle_seq + (L + 1) * 0 + j) == 1) s2 += 1;
+			if (*(TYPE + (L + 1) * 0 + j) == 0) s1 += 1;
+			if (*(TYPE + (L + 1) * 0 + j) == 1) s2 += 1;
 		}
-		PAC_temp += (s1 * log(Mu) + s2 * log(1 - Mu));
-
-		if (i == 0) {
-			logPAC = PAC_temp;
-			logPAC_1[i] = 0.0;
-		}
-		else {
-			logPAC_1[i] = PAC_temp - logPAC;
-			if ((logPAC_1[i] < -312) || (logPAC_1[i] > 313)) fprintf(stderr, "\nWarning! Difference between PACs is too large, %lf.\n", logPAC_1[i]);
-		}
+		*logw += (s1 * log(Mu) + s2 * log(1 - Mu));
 	}
-	logPAC_avg = 0.0;
-	for (i = 0; i < nshuffle; i++) logPAC_avg += exp(logPAC_1[i]);
-	//fprintf(stderr, "\nThe averaged part = %lf, the log(PAC) for the first order = %lf\n", logPAC_avg/(double)nshuffle, logPAC);
-	logPAC_avg = log(logPAC_avg / (double)nshuffle) + logPAC;
-	//fprintf(stderr, "\nThe log(averaged PAC) = %lf\n", logPAC_avg);
-	*logw += logPAC_avg;
 
 	
 
@@ -314,11 +331,10 @@ int Build(long* TYPE, long* type2node, long* ntype, const double RHO, const doub
 
     free(nanc);
     free(nanc_copy);
-	free(TYPE_tmp);
+	//free(TYPE_tmp);
 	free(newseq);
-	free(shuffle_index);
-	free(shuffle_seq);
-    
+
+
     return(0);
 }
 

@@ -299,6 +299,7 @@ int main(int argc, char *argv[]){
     free(mut_by_site);
     free(mut_site);
     free(mut_state);
+    free(mut_node);
     
     return(0);
 

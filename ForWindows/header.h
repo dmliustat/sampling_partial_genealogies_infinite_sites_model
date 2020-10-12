@@ -1,13 +1,13 @@
 #ifndef TYPE_MAX
-#define TYPE_MAX (500) /* max number of different types min(Lm,(K+1)*(K+1)-1) */
+#define TYPE_MAX (100) /* max number of different types min(Lm,(K+1)*(K+1)-1) */
 #endif 
 
 #ifndef NODE_MAX
-#define NODE_MAX (1000) /* max number of sequences at any specific time*/
+#define NODE_MAX (50) /* max number of sequences at any specific time*/
 #endif
 
 #ifndef MUT_MAX
-#define MUT_MAX (1000) /* max number of sequences at any specific time*/
+#define MUT_MAX (600) /* max number of sequences at any specific time*/
 #endif
 
 #ifndef K
