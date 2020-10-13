@@ -81,7 +81,7 @@ int main(int argc, char *argv[]){
 
     
     if(argc>1) fopen_s(&in1, argv[1],"r");
-    else fopen_s(&in1, "C:\\Users\\blabl\\Desktop\\LinesOfDescents\\infile_com1","r");
+    else fopen_s(&in1, "infile1","r");
     
     input1(in1);
     fclose(in1);
@@ -89,7 +89,7 @@ int main(int argc, char *argv[]){
     
     
     if(argc>2) fopen_s(&in2, argv[2],"r");
-    else fopen_s(&in2, "C:\\Users\\blabl\\Desktop\\LinesOfDescents\\infile_com2","r");
+    else fopen_s(&in2, "infile2","r");
     
     input2(in2);
     fclose(in2);
