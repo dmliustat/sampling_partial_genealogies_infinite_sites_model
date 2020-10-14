@@ -68,4 +68,6 @@ ar -rc liballfiles.a common.o gamma.o LSprob.o tables.o kastore.o core.o
 
 gcc SPGSIS.c -L. -lallfiles -o SPGSIS
 
-.\SPGSIS.exe infile1 infile2 out 
+.\SPGSIS.exe 
+
+Note that the input files have to be in the same directory. Otherwise, the user need to provide the path of the input files.
