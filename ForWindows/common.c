@@ -274,6 +274,7 @@ void shuffle(long* array, size_t n)
 		for (i = 0; i < n - 1; i++) {
 			size_t j = i + rand() / (RAND_MAX / (n - i) + 1);
 			long t = array[j];
+			//fprintf(stderr, "\n shuffle = %ld\n", t);
 			array[j] = array[i];
 			array[i] = t;
 		}

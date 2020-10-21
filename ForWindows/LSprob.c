@@ -562,7 +562,7 @@ double CSDapprx(long *TYPE, long k, long *newseq, long nbranch, long ntype, long
 
 void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA, long k, long* ntype, long* nbranch, long* nanc, double* m, double* logw, tsk_table_collection_t* tables, int *rec_num, int *mut_num, int* coal_num, int* nonrec, long* mut_by_site, long* mut_site, long* mut_state, long* mut_node)
 {
-    double tot, probtemp, probtemp2, *prob, *lweights, u, p_common; /*p_common=p(alpha | H-alpha) */
+    double tot, probtemp, probtemp2, *prob, *lprob, *lweights, u, p_common; /*p_common=p(alpha | H-alpha) */
     long i, j, a, e, *newseq, *old, *rec1, *rec2, min, max, *TYPE_st;
     long onode, onode2, nnode, nnode2, edge, *edge_arr, nodeTime;
     double left, right; /* edge_sum = 0.0, rec_sum = 0.0 for edges*/
@@ -577,6 +577,7 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
 	TYPE_st = long_vec_init((L + 1) * TYPE_MAX);
 
     prob = dou_vec_init(K*L+L-1+TYPE_MAX);
+	lprob = dou_vec_init(K * L + L - 1 + TYPE_MAX);
     lweights = dou_vec_init(K*L+L-1+TYPE_MAX);
 
     /*onode is the index of the chosen/old node sampled from type k nodes*/
@@ -591,7 +592,8 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
 	for (e = 0; e < (L + 1) * *ntype; e++) TYPE_st[e] = *(TYPE + e);
 
      /*calculate H(alpha | H-alpha)*/
-    p_common = CSDapprx(TYPE, k, newseq, *nbranch, *ntype, nanc, RHO);
+    //p_common = CSDapprx(TYPE, k, newseq, *nbranch, *ntype, nanc, RHO);
+	p_common = CSDapprx_scaling(TYPE, k, newseq, *nbranch, *ntype, nanc, RHO);
 
 
     /*mutation events, K*L in total (0 -- K*L-1)*/
@@ -602,20 +604,27 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
             for(j=0; j<K; j++){
                 if(P[j][a]>0){
 					if (j == a) {
-						prob[K * i + j] = THETA * p_common * P[j][a];
+						//prob[K * i + j] = THETA * p_common * P[j][a];
+						lprob[K * i + j] = log(THETA) + p_common + log(P[j][a]);
+						prob[K * i + j] = exp(lprob[K * i + j]);
  						lweights[K * i + j] = 0;
 					}
 					else {
 						newseq[i] = j; /*the new allele*/
-						probtemp = CSDapprx(TYPE, k, newseq, *nbranch, *ntype, nanc, RHO);
+						//probtemp = CSDapprx(TYPE, k, newseq, *nbranch, *ntype, nanc, RHO);
+						probtemp = CSDapprx_scaling(TYPE, k, newseq, *nbranch, *ntype, nanc, RHO);
 						newseq[i] = a;
 						
-						lweights[K * i + j] = log(p_common) - log(probtemp);
-						prob[K * i + j] = THETA * probtemp * P[j][a];
+						//lweights[K * i + j] = log(p_common) - log(probtemp);
+						//prob[K * i + j] = THETA * probtemp * P[j][a];
+						lweights[K * i + j] = p_common - probtemp;
+						lprob[K * i + j] = log(THETA) + probtemp + log(P[j][a]);
+						prob[K * i + j] = exp(lprob[K * i + j]);
 					}
                 }
                 else{
                     prob[K*i+j] = 0;
+					lprob[K * i + j] = -INFINITY;
                     lweights[K*i+j] = -INFINITY;
                 }
             }
@@ -624,6 +633,7 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
         else{
             for(j=0; j<K; j++) {
                 prob[K*i+j] = 0;
+				lprob[K * i + j] = -INFINITY;
                 lweights[K*i+j] = -INFINITY;
             }
         }      
@@ -634,6 +644,7 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
     max = -1; /*min and max are the extreme ancestral loci*/
     for(i=0; i<L; i++){
         prob[K*L+i] = 0;
+		lprob[K * L + i] = -INFINITY;
         lweights[K*L+i] = -INFINITY;
         if(*(TYPE+(L+1)*k+i)>=0){
             max = i;
@@ -643,14 +654,16 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
     for(i=min; i<max; i++){
         rec1[i] = rec2[i];
         rec2[i] = -1;
-        probtemp = CSDapprx(TYPE, k, rec1, *nbranch, *ntype, nanc, RHO); /*p(beta | H-alpha) */
+        //probtemp = CSDapprx(TYPE, k, rec1, *nbranch, *ntype, nanc, RHO); /*p(beta | H-alpha) */
+		probtemp = CSDapprx_scaling(TYPE, k, rec1, *nbranch, *ntype, nanc, RHO);
 		/*add rec1 to the current configuration*/
 		for (j = 0; j < L; j++) {
 			if (rec1[j] >= 0) nanc[j] += 1;
 		}
 		j = add_s(TYPE, ntype, rec1, *nbranch);
 		*nbranch += 1;
-        probtemp2 = CSDapprx(TYPE, k, rec2, *nbranch, *ntype, nanc, RHO); /*p(gamma | H+beta-alpha) */
+        //probtemp2 = CSDapprx(TYPE, k, rec2, *nbranch, *ntype, nanc, RHO); /*p(gamma | H+beta-alpha) */
+		probtemp2 = CSDapprx_scaling(TYPE, k, rec2, *nbranch, *ntype, nanc, RHO);
 		/*remove rec1*/
 		remove_s(TYPE, ntype, j, *nbranch);
 		*nbranch -= 1;
@@ -658,8 +671,11 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
 			if (rec1[j] >= 0) nanc[j] -= 1;
 		}
 
-		prob[K * L + i] = RHO * (positions[i + 1] - positions[i]) * probtemp * probtemp2;		
-        lweights[K*L+i] = log(p_common) - log(probtemp) - log(probtemp2);
+		//prob[K * L + i] = RHO * (positions[i + 1] - positions[i]) * probtemp * probtemp2;		
+        //lweights[K*L+i] = log(p_common) - log(probtemp) - log(probtemp2);
+		lprob[K * L + i] = log(RHO) + log(positions[i + 1] - positions[i]) + probtemp + probtemp2;
+		prob[K * L + i] = exp(lprob[K * L + i]);
+		lweights[K * L + i] = p_common - probtemp - probtemp2;
     }
 
 
@@ -668,6 +684,7 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
         /*coalescence of two different haplotypes*/
         if(i!=k){
             prob[K*L+L-1+i] = 0;
+			lprob[K * L + L - 1 + i] = -INFINITY;
             lweights[K*L+L-1+i] = -INFINITY;
             for(j=0; j<L; j++){
                 if(*(TYPE+(L+1)*i+j) == *(TYPE+(L+1)*k+j)){
@@ -693,12 +710,16 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
 				e = remove_s(TYPE_st, ntype, i, *nbranch);
 				*nbranch -= 1;
 				if (e == 1 && i < k) {
-					probtemp = CSDapprx(TYPE_st, k-1, newseq, *nbranch, *ntype, nanc, RHO); /*p(gamma | H-alpha-beta)*/
-					probtemp2 = CSDapprx(TYPE_st, k-1, old, *nbranch, *ntype, nanc, RHO); /*p(beta | H-alpha-beta)*/
+					//probtemp = CSDapprx(TYPE_st, k-1, newseq, *nbranch, *ntype, nanc, RHO); /*p(gamma | H-alpha-beta)*/
+					//probtemp2 = CSDapprx(TYPE_st, k-1, old, *nbranch, *ntype, nanc, RHO); /*p(beta | H-alpha-beta)*/
+					probtemp = CSDapprx_scaling(TYPE_st, k - 1, newseq, *nbranch, *ntype, nanc, RHO); 
+					probtemp2 = CSDapprx_scaling(TYPE_st, k - 1, old, *nbranch, *ntype, nanc, RHO);
 				}
 				else {
-					probtemp = CSDapprx(TYPE_st, k, newseq, *nbranch, *ntype, nanc, RHO); /*p(gamma | H-alpha-beta)*/
-					probtemp2 = CSDapprx(TYPE_st, k, old, *nbranch, *ntype, nanc, RHO); /*p(beta | H-alpha-beta)*/
+					//probtemp = CSDapprx(TYPE_st, k, newseq, *nbranch, *ntype, nanc, RHO); /*p(gamma | H-alpha-beta)*/
+					//probtemp2 = CSDapprx(TYPE_st, k, old, *nbranch, *ntype, nanc, RHO); /*p(beta | H-alpha-beta)*/
+					probtemp = CSDapprx_scaling(TYPE_st, k, newseq, *nbranch, *ntype, nanc, RHO); 
+					probtemp2 = CSDapprx_scaling(TYPE_st, k, old, *nbranch, *ntype, nanc, RHO);
 				}
                 //probtemp = CSDapprx(TYPE, k, newseq, *nbranch, *ntype, nanc, RHO); /*p(gamma | H-alpha-beta)*/
                 //probtemp2 = CSDapprx(TYPE, k, old, *nbranch, *ntype, nanc, RHO); /*p(beta | H-alpha-beta)*/
@@ -710,15 +731,20 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
 				}
 				for (e = (L + 1) * i; e < (L + 1) * *ntype; e++) TYPE_st[e] = *(TYPE + e);
                
-                lweights[K*L+L-1+i] = log(p_common) + log(probtemp2) - log(probtemp);
-				prob[K * L + L - 1 + i] = *(TYPE + (L + 1) * i + L) * probtemp / probtemp2;
+                //lweights[K*L+L-1+i] = log(p_common) + log(probtemp2) - log(probtemp);
+				//prob[K * L + L - 1 + i] = *(TYPE + (L + 1) * i + L) * probtemp / probtemp2;
+				lweights[K * L + L - 1 + i] = p_common + probtemp2 - probtemp;
+				lprob[K * L + L - 1 + i] = log(*(TYPE + (L + 1) * i + L)) + probtemp - probtemp2;
+				prob[K * L + L - 1 + i] = exp(lprob[K * L + L - 1 + i]);
             }
         }
         /*a coalescence of two identical haplotypes*/
 		/*have to decide if there is more than one type k*/
         else {            
-            lweights[K*L+L-1+i] = log(p_common) + log((*(TYPE+(L+1)*i+L)==1) ? 0: 1);
+            //lweights[K*L+L-1+i] = log(p_common) + log((*(TYPE+(L+1)*i+L)==1) ? 0: 1);
 			prob[K * L + L - 1 + i] = *(TYPE + (L + 1) * i + L) - 1.0;
+			lweights[K * L + L - 1 + i] = p_common + ((*(TYPE + (L + 1) * i + L) == 1) ? 0 : 1);
+			lprob[K * L + L - 1 + i] = log(*(TYPE + (L + 1) * i + L) - 1.0);
         }
     }
 
@@ -744,13 +770,15 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
         e++;
     }
     /*e-1 is the chosen event*/
-	if((*(prob + e - 1) > 0) && (*(lweights + e - 1) != -INFINITY)){
+	//if((*(prob + e - 1) > 0) && (*(lweights + e - 1) != -INFINITY)){
+	if ((*(lprob + e - 1) != -INFINITY) && (*(lweights + e - 1) != -INFINITY)) {
          *logw += *(lweights + e - 1);
 		//fprintf(stderr, "\n log weight = %f\n", *logw);
     }
 	
     else{
-        fprintf(stdout, "\n e %ld, probability %f, log weight %f, tot %f\n", e, *(prob+e-1), *(lweights+e-1), tot);
+        //fprintf(stdout, "\n e %ld, probability %f, log weight %f, tot %f\n", e, *(prob+e-1), *(lweights+e-1), tot);
+		fprintf(stdout, "\n e %ld, log prob %f, log weight %f, tot %f\n", e, *(lprob + e - 1), *(lweights + e - 1), tot);
         return;
     }
 	
@@ -935,7 +963,7 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
 			k = k - i;
 		}
         nnode = tsk_node_table_add_row(&tables->nodes, 0, nodeTime, TSK_NULL, TSK_NULL, NULL, 0);
-		//fprintf(stderr, "Coalescence event is chosen. children %ld and %ld, parent %ld\n", onode, onode2, nnode);
+		fprintf(stderr, "\n Coalescence event is chosen. children %ld and %ld, parent %ld\n", onode, onode2, nnode);
 		if (nnode < 0) fprintf(stderr, "Adding node failed.\n");
  
         /*edge_arr: 0 non-ancestral; 1 type k; 2 type i; 3: both*/
@@ -1037,6 +1065,7 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
     free(rec1);
     free(rec2);
     free(prob);
+	free(lprob);
     free(lweights);
 	free(edge_arr);
 	free(TYPE_st);
