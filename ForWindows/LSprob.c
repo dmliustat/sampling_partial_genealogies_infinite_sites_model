@@ -743,7 +743,7 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
         else {            
             //lweights[K*L+L-1+i] = log(p_common) + log((*(TYPE+(L+1)*i+L)==1) ? 0: 1);
 			prob[K * L + L - 1 + i] = *(TYPE + (L + 1) * i + L) - 1.0;
-			lweights[K * L + L - 1 + i] = p_common + ((*(TYPE + (L + 1) * i + L) == 1) ? 0 : 1);
+			lweights[K * L + L - 1 + i] = p_common + log((*(TYPE + (L + 1) * i + L) == 1) ? 0 : 1);
 			lprob[K * L + L - 1 + i] = log(*(TYPE + (L + 1) * i + L) - 1.0);
         }
     }
