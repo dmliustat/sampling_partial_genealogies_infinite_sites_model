@@ -81,8 +81,8 @@ int main(int argc, char *argv[]){
 
     
     if(argc>1) fopen_s(&in1, argv[1],"r");
-    else fopen_s(&in1, "C:\\Users\\blabl\\Desktop\\git repos\\sampling_partial_genealogies_infinite_sites_model\\input_files\\infile_cut1","r");
-    //else fopen_s(&in1, ".\\infile1", "r");
+    //else fopen_s(&in1, "C:\\Users\\blabl\\Desktop\\git repos\\sampling_partial_genealogies_infinite_sites_model\\input_files\\infile_cut1","r");
+    else fopen_s(&in1, ".\\infile1", "r");
     
     input1(in1);
     fclose(in1);
@@ -90,8 +90,8 @@ int main(int argc, char *argv[]){
     
     
     if(argc>2) fopen_s(&in2, argv[2],"r");
-    else fopen_s(&in2, "C:\\Users\\blabl\\Desktop\\git repos\\sampling_partial_genealogies_infinite_sites_model\\input_files\\infile_cut2","r");
-    //else fopen_s(&in2, ".\\infile2", "r");
+    //else fopen_s(&in2, "C:\\Users\\blabl\\Desktop\\git repos\\sampling_partial_genealogies_infinite_sites_model\\input_files\\infile_cut2","r");
+    else fopen_s(&in2, ".\\infile2", "r");
     
     input2(in2);
     fclose(in2);
@@ -143,7 +143,7 @@ int main(int argc, char *argv[]){
     }
 
     /* initialize seed */
-    fopen_s(&seed_file, ".seed", "r");
+    /*fopen_s(&seed_file, ".seed", "r");
     if(seed_file==NULL){
         fprintf(stderr,"Can not open .seed. Using default values.\n");
         *seed=436875361;
@@ -152,7 +152,10 @@ int main(int argc, char *argv[]){
     else{
         seed_set(seed_file);
         fclose(seed_file);
-    }
+    }*/
+    /*set fixed random seeds*/
+    *seed = 11;
+    *(seed + 1) = 22;
 
     /* initialize mutation number on each site*/
     //fprintf(stderr, "\nmut_by_site:\n");
@@ -201,8 +204,8 @@ int main(int argc, char *argv[]){
 				if(ret<0) fprintf(stderr, "Dumping .trees failed!\n");
             } 
             else{
-                //snprintf(filename, 200, ".\\out_%ld.trees", i+1);
-                snprintf(filename, 200, "C:\\Users\\blabl\\Dropbox\\output\\out_%ld.trees", i + 1);
+                //snprintf(filename, 200, "C:\\Users\\blabl\\Dropbox\\output\\out_%ld.trees", i + 1);
+                snprintf(filename, 200, ".\\out_%ld.trees", i+1);                
                 ret = tsk_table_collection_dump(&tables, filename, 0);
 				if (ret < 0) fprintf(stderr, "Dumping .trees failed!\n");
             }
@@ -224,6 +227,7 @@ int main(int argc, char *argv[]){
 			fprintf(stderr, "Building ARG succeeds.\n");
 
 			//snprintf(filename, 200, "out_%d.txt", i+1);
+            //snprintf(filename, 200, "C:\\Users\\blabl\\Dropbox\\output\\out_%ld.txt", i + 1);
 			//fopen_s(&test, filename, "w");
 
 			//tsk_table_collection_print_state(&tables, test);
@@ -259,8 +263,8 @@ int main(int argc, char *argv[]){
         fopen_s(&out, filename, "w");
     } 
     else{
-        snprintf(filename, 200, "C:\\Users\\blabl\\Dropbox\\output\\out_wt.txt");
-        //snprintf(filename, 200, ".\\out_wt.txt");
+        //snprintf(filename, 200, "C:\\Users\\blabl\\Dropbox\\output\\out_wt.txt");
+        snprintf(filename, 200, ".\\out_wt.txt");
         fopen_s(&out, filename, "w");
     }
     if(out){

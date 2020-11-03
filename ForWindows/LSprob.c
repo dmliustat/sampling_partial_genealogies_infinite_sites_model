@@ -963,7 +963,7 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
 			k = k - i;
 		}
         nnode = tsk_node_table_add_row(&tables->nodes, 0, nodeTime, TSK_NULL, TSK_NULL, NULL, 0);
-		fprintf(stderr, "\n Coalescence event is chosen. children %ld and %ld, parent %ld\n", onode, onode2, nnode);
+		//fprintf(stderr, "\n Coalescence event is chosen. children %ld and %ld, parent %ld\n", onode, onode2, nnode);
 		if (nnode < 0) fprintf(stderr, "Adding node failed.\n");
  
         /*edge_arr: 0 non-ancestral; 1 type k; 2 type i; 3: both*/
@@ -993,15 +993,15 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
 		/*store nnode1 edges*/
 		left = -1;
 		flag = -1; /*flag=-1 haven't found the interval; flag=0 found left*/
-		for (j = 0; j <= L; j++) {
-			if (flag == -1 && j < L) {
+		for (j = 0; j < L; j++) {
+			if (flag == -1 && j < L-1) {
 				if (edge_arr[j] == 1 || edge_arr[j] == 3) {
 					left = positions[j];
 					flag = 0;
 				}
 			}
 			else if (flag == 0) {
-				if (j == L) {
+				if (j == L-1) {
 					right = positions[j];
 					edge = tsk_edge_table_add_row(&tables->edges, left, right, nnode, onode);
 					if (edge < 0) {
@@ -1022,15 +1022,15 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
 		/*store nnode2 edges*/
 		left = -1;
 		flag = -1; /*flag=-1 haven't found the interval; flag=0 found left*/
-		for (j = 0; j <= L; j++) {
-			if (flag == -1 && j < L) {
+		for (j = 0; j < L; j++) {
+			if (flag == -1 && j < L-1) {
 				if (edge_arr[j] == 2 || edge_arr[j] == 3) {
 					left = positions[j];
 					flag = 0;
 				}
 			}
 			else if (flag == 0) {
-				if (j == L) {
+				if (j == L-1) {
 					right = positions[j];
 					edge = tsk_edge_table_add_row(&tables->edges, left, right, nnode, onode2);
 					if (edge < 0) {
