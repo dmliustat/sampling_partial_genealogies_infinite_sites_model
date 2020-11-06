@@ -68,4 +68,4 @@ ar -rc liballfiles.a common.o gamma.o LSprob.o tables.o kastore.o core.o
 
 gcc SPGSIS.c -L. -lallfiles -o SPGSIS
 
-.\SPGSIS infile1 infile2 out 
+./SPGSIS infile1 infile2 out 
