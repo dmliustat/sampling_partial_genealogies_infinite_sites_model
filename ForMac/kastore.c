@@ -544,7 +544,7 @@ kastore_open(kastore_t *self, const char *filename, const char *mode, int flags)
             ret = KAS_ERR_IO;
         }
     }
-	fopen_s(&fname, filename, file_mode);
+	fname = fopen(filename, file_mode);
 	self->file = fname;
     if (self->file == NULL) {
         ret = KAS_ERR_IO;
